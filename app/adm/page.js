@@ -24,9 +24,14 @@ export default function AdminRankingPage() {
     };
     checkUser();
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_, session) => setUser(session?.user ?? null)
-    );
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useEffect(() => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        (_, session) => setUser(session?.user ?? null)
+      );
+
+      return () => subscription.unsubscribe();
+    }, []);
 
     return () => listener.subscription.unsubscribe();
   }, []);
