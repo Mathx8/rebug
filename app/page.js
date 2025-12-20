@@ -9,14 +9,11 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.hash) {
-      const hash = window.location.hash;
-      if (hash.includes("access_token")) {
-        router.replace("/adm" + hash);
+      if (window.location.hash.includes("access_token")) {
+        router.replace("/adm/setup-password" + window.location.hash);
       }
     }
   }, [router]);
 
-  return (
-    <Ranking />
-  );
+  return <Ranking />;
 }

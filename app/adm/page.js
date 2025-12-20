@@ -23,12 +23,10 @@ export default function AdminRankingPage() {
     };
     checkUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_, session) => {
-        setUser(session?.user ?? null);
-        setLoadingAuth(false);
-      }
-    );
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+      setLoadingAuth(false);
+    });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -48,7 +46,6 @@ export default function AdminRankingPage() {
       setPlayer(null);
       return;
     }
-
     supabase
       .from("dados")
       .select("*")
@@ -98,8 +95,7 @@ export default function AdminRankingPage() {
             onClick={() => supabase.auth.signOut()}
             className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-red-400 transition-colors uppercase tracking-wider"
           >
-            <LogOut size={14} />
-            Sair
+            <LogOut size={14} /> Sair
           </button>
         </div>
       </div>
@@ -108,21 +104,11 @@ export default function AdminRankingPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 mt-4">
           <div>
             <h2 className="text-2xl font-bold text-white mb-1">Editor de Ranking</h2>
-            <p className="text-sm text-slate-500">Gerencie estatísticas e pontuações dos jogadores.</p>
+            <p className="text-sm text-slate-500">Gerencie estatísticas dos jogadores.</p>
           </div>
-
-          <PlayerSelect
-            players={players}
-            value={selectedId}
-            onChange={setSelectedId}
-          />
+          <PlayerSelect players={players} value={selectedId} onChange={setSelectedId} />
         </div>
-
-        <RankingEditor
-          player={player}
-          onSaveToDb={handleSaveToDb}
-          saving={saving}
-        />
+        <RankingEditor player={player} onSaveToDb={handleSaveToDb} saving={saving} />
       </div>
     </div>
   );

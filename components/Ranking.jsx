@@ -156,8 +156,20 @@ export default function Ranking() {
                                     </div>
                                 </div>
 
-                                <div className="col-span-1 hidden md:block text-center">{player.titulos}</div>
-                                <div className="col-span-1 hidden md:block text-center">{player.vices}</div>
+                                <div className="col-span-1 hidden md:block text-center">
+                                    {player.titulos > 0 ? (
+                                        <div className="">{player.titulos}</div>
+                                    ) : (
+                                        <span className="text-slate-700">-</span>
+                                    )}
+                                </div>
+                                <div className="col-span-1 hidden md:block text-center">
+                                    {player.vices > 0 ? (
+                                        <div className="">{player.vices}</div>
+                                    ) : (
+                                        <span className="text-slate-700">-</span>
+                                    )}
+                                </div>
 
                                 <div className="col-span-1 text-center hidden md:flex items-center justify-center">
                                     {player.mvp > 0 ? (
