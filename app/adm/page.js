@@ -10,7 +10,6 @@ import RankingEditor from "@/components/RankingEditor";
 export default function AdminRankingPage() {
   const [user, setUser] = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
-
   const [players, setPlayers] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [player, setPlayer] = useState(null);
@@ -24,16 +23,14 @@ export default function AdminRankingPage() {
     };
     checkUser();
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useEffect(() => {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        (_, session) => setUser(session?.user ?? null)
-      );
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_, session) => {
+        setUser(session?.user ?? null);
+        setLoadingAuth(false);
+      }
+    );
 
-      return () => subscription.unsubscribe();
-    }, []);
-
-    return () => listener.subscription.unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -62,7 +59,6 @@ export default function AdminRankingPage() {
 
   const handleSaveToDb = async (updatedPlayerData) => {
     if (!updatedPlayerData) return;
-
     setSaving(true);
     const { error } = await supabase
       .from("dados")
@@ -91,7 +87,6 @@ export default function AdminRankingPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-slate-300 pb-20">
-
       <div className="border-b border-white/5 bg-[#0f111a]/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
