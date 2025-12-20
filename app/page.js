@@ -8,8 +8,11 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    if (window.location.hash.includes("access_token")) {
-      router.replace("/adm" + window.location.hash);
+    if (typeof window !== "undefined" && window.location.hash) {
+      const hash = window.location.hash;
+      if (hash.includes("access_token")) {
+        router.replace("/adm" + hash);
+      }
     }
   }, [router]);
 

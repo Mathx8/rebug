@@ -13,13 +13,15 @@ export default function Login() {
     const [isSettingPassword, setIsSettingPassword] = useState(false);
 
     useEffect(() => {
-        supabase.auth.onAuthStateChange((event) => {
-            if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
-                if (window.location.hash.includes("access_token")) {
-                    setIsSettingPassword(true);
-                }
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+            const hasToken = typeof window !== "undefined" && window.location.hash.includes("access_token");
+
+            if (event === "PASSWORD_RECOVERY" || hasToken) {
+                setIsSettingPassword(true);
             }
         });
+
+        return () => subscription.unsubscribe();
     }, []);
 
     const handleLogin = async (e) => {
