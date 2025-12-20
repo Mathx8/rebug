@@ -28,7 +28,7 @@ export default function Login() {
                     <input type="password" placeholder="Senha" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-[#050505] border border-white/10 rounded-lg px-4 py-2 text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600" />
                 </div>
                 {error && <div className="text-red-500 text-xs mt-4 text-center font-bold bg-red-500/10 py-2 rounded-lg">{error}</div>}
-                <button type="submit" disabled={loading} className="w-full mt-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 font-bold text-white uppercase tracking-tighter shadow-lg shadow-blue-900/20">
+                <button type="submit" disabled={loading} className="w-full mt-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 font-bold text-white uppercase tracking-tighter shadow-lg shadow-blue-900/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition">
                     {loading ? "Entrando..." : "Entrar"}
                 </button>
             </form>

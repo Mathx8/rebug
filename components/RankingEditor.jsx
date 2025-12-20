@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useState } from "react";
-import { Save, RotateCcw, AlertCircle } from "lucide-react";
+import { Save, RotateCcw, AlertCircle, Trash2, User, Fingerprint } from "lucide-react";
 import EditableCell from "./EditarJogador.jsx";
 
 const groups = [
@@ -32,7 +32,7 @@ const groups = [
   },
 ];
 
-export default function RankingEditor({ player, onSaveToDb, saving }) {
+export default function RankingEditor({ player, onSaveToDb, onDelete, saving }) {
   const [draft, setDraft] = useState(null);
   const [original, setOriginal] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
@@ -40,8 +40,8 @@ export default function RankingEditor({ player, onSaveToDb, saving }) {
   useEffect(() => {
     if (player) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setDraft(player);
-      setOriginal(player);
+      setDraft({ ...player });
+      setOriginal({ ...player });
       setIsDirty(false);
     } else {
       setDraft(null);
@@ -60,44 +60,70 @@ export default function RankingEditor({ player, onSaveToDb, saving }) {
   }
 
   const handleChange = (key, value) => {
-    const updated = { ...draft, [key]: Number(value) };
-    setDraft(updated);
+    setDraft(prev => ({ ...prev, [key]: value }));
     setIsDirty(true);
   };
 
-  const handleReset = () => {
-    setDraft(original);
-    setIsDirty(false);
-  };
-
-  const handleCommit = () => {
-    onSaveToDb(draft);
-    setOriginal(draft);
-    setIsDirty(false);
-  };
-
   return (
-    <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="mt-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
 
+      <div className="bg-[#0f111a] border border-white/5 rounded-2xl p-6 mb-6 shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-1 h-full bg-blue-600"></div>
 
-      <div className="flex items-center gap-4 mb-6 px-2">
-        <img
-          src={`https://hubbe.biz/avatar/${draft.Nick}?img_format=png&headonly=2`}
-          alt={draft.Nick}
-          className="h-12 w-12 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 font-bold text-lg"
-        />
-        <div>
-          <h2 className="text-xl font-bold text-white uppercase tracking-widest">{draft.Nome}</h2>
-          <p className="text-xs text-slate-500">{draft.Nick}</p>
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="flex items-center gap-5 w-full">
+            <div className="relative group">
+              <img
+                src={`https://hubbe.biz/avatar/${draft.Nick}?img_format=png&headonly=2`}
+                alt={draft.Nick}
+                className="h-16 w-16 rounded-2xl bg-black/40 border border-white/10 p-1 object-contain transition-transform group-hover:scale-110"
+              />
+              <div className="absolute -bottom-2 -right-2 bg-blue-600 text-white p-1 rounded-md shadow-lg">
+                <Fingerprint size={12} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
+              <div className="space-y-1">
+                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Nome do Jogador</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={14} />
+                  <input
+                    type="text"
+                    value={draft.Nome || ""}
+                    onChange={(e) => handleChange("Nome", e.target.value)}
+                    className="w-full bg-black/40 border border-white/5 rounded-xl pl-9 pr-4 py-2 text-sm font-bold text-white focus:border-blue-500/50 focus:outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Nick (Hubbe)</label>
+                <input
+                  type="text"
+                  value={draft.Nick || ""}
+                  onChange={(e) => handleChange("Nick", e.target.value)}
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-2 text-sm font-mono font-bold text-blue-400 focus:border-blue-500/50 focus:outline-none transition-all"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Ações</label>
+            <button
+              onClick={() => onDelete(draft.ID, draft.Nome)}
+              className="flex items-center bg-black/40 gap-2 px-4 py-2 text-[10px] font-black text-red-500/40 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all uppercase tracking-widest whitespace-nowrap cursor-pointer"
+            >
+              <Trash2 size={14} /> Deletar Jogador
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="space-y-6">
         {groups.map((group) => (
-          <div
-            key={group.title}
-            className="bg-[#0f111a] border border-white/5 rounded-2xl p-6 shadow-xl"
-          >
+          <div key={group.title} className="bg-[#0f111a] border border-white/5 rounded-2xl p-6 shadow-xl">
             <div className="flex items-center gap-2 mb-5 pb-3 border-b border-white/5">
               <div className={`w-1.5 h-1.5 rounded-full ${group.color === 'text-amber-400' ? 'bg-amber-400' : 'bg-blue-400'}`}></div>
               <h3 className={`text-xs font-bold uppercase tracking-widest ${group.color}`}>
@@ -107,14 +133,10 @@ export default function RankingEditor({ player, onSaveToDb, saving }) {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
               {group.fields.map(({ label, key }) => (
-                <div
-                  key={key}
-                  className="bg-black/20 rounded-lg p-1 flex flex-col gap-2"
-                >
+                <div key={key} className="bg-black/20 rounded-lg p-1 flex flex-col gap-2">
                   <span className="text-[10px] text-slate-500 uppercase text-center font-semibold tracking-wide block mt-1">
                     {label}
                   </span>
-
                   <EditableCell
                     value={draft[key] ?? 0}
                     onChange={(v) => handleChange(key, v)}
@@ -133,33 +155,24 @@ export default function RankingEditor({ player, onSaveToDb, saving }) {
                 Alterações não salvas
               </span>
             ) : (
-              <span className="flex items-center gap-2 opacity-50">
+              <span className="flex items-center gap-2 opacity-50 text-[10px] font-bold uppercase tracking-widest">
                 <span className="w-2 h-2 rounded-full bg-green-500" />
                 Sincronizado
               </span>
             )}
           </div>
-
-          <div className="flex gap-3">
+          <div className="flex gap-4">
             <button
-              onClick={handleReset}
+              onClick={() => { setDraft(original); setIsDirty(false); }}
               disabled={!isDirty || saving}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg text-slate-400 hover:text-white hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 text-[10px] font-black rounded-xl text-slate-500 hover:text-white transition-all uppercase disabled:opacity-20"
             >
-              <RotateCcw size={16} />
-              Descartar
+              <RotateCcw size={14} /> Descartar
             </button>
-
             <button
-              onClick={handleCommit}
-              disabled={!isDirty && !saving}
-              className={`
-                        flex items-center gap-2 px-6 py-2.5 text-sm font-bold rounded-lg shadow-lg
-                        transition-all duration-200
-                        ${isDirty
-                  ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20'
-                  : 'bg-slate-800 text-slate-500 cursor-not-allowed'}
-                    `}
+              onClick={() => onSaveToDb(draft)}
+              disabled={!isDirty || saving}
+              className={`flex items-center gap-2 px-8 py-2.5 text-[10px] font-black rounded-xl transition-all uppercase shadow-xl ${isDirty ? 'bg-blue-600 text-white shadow-blue-900/40 hover:bg-blue-500 cursor-pointer' : 'bg-white/5 text-slate-700 cursor-not-allowed'}`}
             >
               {saving ? (
                 <>Salvando...</>
