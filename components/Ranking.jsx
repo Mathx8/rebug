@@ -163,7 +163,7 @@ export default function Ranking() {
 
                 {paginatedRanking.map((player) => {
                     const style = getRankConfig(player.pos);
-                    const hasAcademy = (n(player.titulos_academy) + n(player.vices_academy) + n(player.mvp_academy) + n(player.t1_academy)) > 0;
+                    const hasAcademy = (n(player.titulos_academy) + n(player.vices_academy) + n(player.mvp_academy) + n(player.t1_academy) + n(player.t2_academy) + n(player.t3_academy)) > 0;
 
                     return (
                         <div key={player.pos} className={`grid grid-cols-12 gap-2 px-4 md:px-6 py-4 items-center transition-all ${style.bg}`}>
