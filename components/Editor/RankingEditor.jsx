@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useState } from "react";
 import { Save, RotateCcw, AlertCircle, Trash2, User, Fingerprint } from "lucide-react";
-import EditableCell from "./EditarJogador.jsx";
+import EditableCell from "../EditarJogador.jsx";
 
 const groups = [
   {
