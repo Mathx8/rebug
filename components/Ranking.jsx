@@ -1,7 +1,8 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { Medal, Crown, Star, GraduationCap, X } from "lucide-react";
+import Link from "next/link";
+import { Medal, Crown, Star, GraduationCap, X, Trophy, LayoutDashboard } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
@@ -23,7 +24,10 @@ export default function Ranking() {
     useEffect(() => {
         async function fetchRanking() {
             setLoading(true);
-            const { data, error } = await supabase.from("public_ranking").select("*");
+            const { data, error } = await supabase
+                .from("public_ranking")
+                .select("*")
+                .gt("pontos", 0);
 
             if (error) {
                 console.error(error);
@@ -67,6 +71,30 @@ export default function Ranking() {
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-900/10 blur-[120px] rounded-full mix-blend-screen" />
                 <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-yellow-900/5 blur-[120px] rounded-full mix-blend-screen" />
             </div>
+
+            <header className="w-full max-w-7xl flex items-center justify-between mb-12 relative z-30">
+                <div className="flex items-center gap-3">
+                    <div className="text-center relative z-10">
+                        <h1 className="text-4xl md:text-6xl font-black text-white mb-2 uppercase tracking-tighter">
+                            RANKING <span className="text-transparent bg-clip-text bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-700 drop-shadow-sm">REBUG</span>
+                        </h1>
+                        <div className="flex items-center gap-3">
+                            <div className="h-1 w-12 bg-yellow-600 rounded-full" />
+                            <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em]">Classificação oficial dos campeões</p>
+                        </div>
+                    </div>
+                </div>
+
+                <nav className="flex items-center gap-2 md:gap-4">
+                    <Link
+                        href="/campeonatos"
+                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white px-4 py-2.5 md:px-6 rounded-2xl border border-white/10 transition-all active:scale-95 group shadow-xl"
+                    >
+                        <Trophy size={18} className="text-yellow-500 group-hover:rotate-12 transition-transform" />
+                        <span className="text-[10px] md:text-xs font-black uppercase tracking-widest">Campeonatos</span>
+                    </Link>
+                </nav>
+            </header>
 
             {selectedCareer && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md transition-all">
@@ -126,16 +154,6 @@ export default function Ranking() {
                 </div>
             )}
 
-            <div className="text-center mb-10">
-                <div className="inline-flex items-center justify-center mb-4 bg-gradient-to-br from-[#1e293b] to-[#0f172a] rounded-full shadow-lg border border-slate-700/50">
-                    <Image src={LogoRebug} alt="Logo Rebug" width={50} height={50} />
-                </div>
-                <h1 className="text-3xl md:text-5xl font-black text-white mb-2 uppercase tracking-tighter">
-                    RANKING <span className="text-transparent bg-clip-text bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-700">REBUG</span>
-                </h1>
-                <p className="text-slate-500 text-sm">Classificação oficial dos campeões</p>
-            </div>
-
             <div className="w-full max-w-7xl bg-[#0f111a]/70 rounded-3xl border border-white/5 shadow-2xl overflow-hidden backdrop-blur-md">
                 <div className="grid grid-cols-12 gap-2 px-4 md:px-6 py-5 bg-[#0a0a0c] text-[9px] md:text-xs font-bold uppercase text-slate-500 border-b border-white/5">
                     <div className="col-span-2 md:col-span-1 text-center">Rank</div>
@@ -155,7 +173,7 @@ export default function Ranking() {
                         <Medal className="w-3.5 h-3.5 text-orange-600 drop-shadow-[0_0_5px_rgba(234,88,12,0.2)]" title="Top 3" />
                     </div>
                     <div className="col-span-2 md:col-span-2 flex items-center justify-center uppercase tracking-tighter">
-                        <GraduationCap size={12} className="md:hidden" title="Academy"/>
+                        <GraduationCap size={12} className="md:hidden" title="Academy" />
                         <span className="hidden md:inline">Academy</span>
                     </div>
                     <div className="col-span-2 md:col-span-1 text-right">Pts</div>
