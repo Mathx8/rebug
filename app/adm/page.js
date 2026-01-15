@@ -3,14 +3,16 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase.js";
-import { LogOut, Trophy, Users, Star, UserPlus, X, ShieldPlus } from "lucide-react";
+import { LogOut, Trophy, Users, Star, UserPlus, X, ShieldPlus, LayersPlus } from "lucide-react";
 import Login from "@/components/Login";
 
 import NovoJogador from "@/components/Creator/NovoJogador";
 import NovoTime from "@/components/Creator/NovoTime";
+import NovoCampeonato from "@/components/Creator/NovoCampeonato";
 import DataSelect from "@/components/EscolheJogador";
 import RankingEditor from "@/components/Editor/RankingEditor";
 import TimeEditor from "@/components/Editor/TimeEditor";
+import CampeonatoEditor from "@/components/Editor/CampeonatoEditor";
 
 export default function AdminRankingPage() {
   const router = useRouter();
@@ -32,6 +34,20 @@ export default function AdminRankingPage() {
 
   const [selectedTeamId, setSelectedTeamId] = useState(null);
   const [selectedTeamData, setSelectedTeamData] = useState(null);
+
+  const [isCampModalOpen, setIsCampModalOpen] = useState(false);
+  const [newCamp, setNewCamp] = useState({
+    nome: "", tier: "", id_campeao: "", id_vice: "",
+    id_mvp: "", id_artilheiro: "", id_assistencia: "",
+    id_top1_gk: "", id_top2_gk: "", id_top3_gk: "",
+    id_top1_zag: "", id_top2_zag: "", id_top3_zag: "",
+    id_top1_mid: "", id_top2_mid: "", id_top3_mid: "",
+    id_top1_atk: "", id_top2_atk: "", id_top3_atk: "",
+    imagem: null
+  });
+  const [camps, setCamps] = useState([]);
+
+  const [selectedCampId, setSelectedCampId] = useState(null);
 
   const fetchPlayers = async () => {
     const { data } = await supabase.from("dados").select("ID, Nome, Nick").order('Nome', { ascending: true });
@@ -57,6 +73,11 @@ export default function AdminRankingPage() {
     setTeams(data || []);
   };
 
+  const fetchCamps = async () => {
+    const { data } = await supabase.from("campeonatos").select("*").order('nome', { ascending: true });
+    setCamps(data || []);
+  }
+
   useEffect(() => {
     const checkUser = async () => {
       const { data } = await supabase.auth.getUser();
@@ -75,20 +96,18 @@ export default function AdminRankingPage() {
 
   useEffect(() => {
     if (user) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchPlayers();
       fetchTeams();
+      fetchCamps();
     }
   }, [user]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!selectedId) { setPlayer(null); return; }
     supabase.from("dados").select("*").eq("ID", selectedId).single().then(({ data }) => setPlayer(data));
   }, [selectedId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!selectedTeamId) { setSelectedTeamData(null); return; }
     supabase.from("times").select("*").eq("id", selectedTeamId).single().then(({ data }) => setSelectedTeamData(data));
   }, [selectedTeamId]);
@@ -187,6 +206,73 @@ export default function AdminRankingPage() {
     }
   };
 
+  const handleCreateCamp = async (e) => {
+    e.preventDefault();
+    if (!newCamp.nome || !newCamp.tier) return;
+
+    setSaving(true);
+    let publicUrl = null;
+
+    try {
+      if (newCamp.imagem) {
+        const file = newCamp.imagem;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `camp-${Date.now()}.${fileExt}`;
+        const filePath = `campeonatos/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('escudos')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage.from('escudos').getPublicUrl(filePath);
+        publicUrl = data.publicUrl;
+      }
+
+      const { error } = await supabase
+        .from("campeonatos")
+        .insert([{
+          nome: newCamp.nome,
+          tier: newCamp.tier,
+          logo_url: publicUrl
+        }]);
+
+      if (error) throw error;
+
+      alert("Campeonato adicionado com sucesso!");
+      await fetchCamps();
+      setNewCamp({
+        nome: "",
+        tier: "",
+        id_campeao: "",
+        id_vice: "",
+        id_mvp: "",
+        id_artilheiro: "",
+        id_assistencia: "",
+        id_top1_gk: "",
+        id_top2_gk: "",
+        id_top3_gk: "",
+        id_top1_zag: "",
+        id_top2_zag: "",
+        id_top3_zag: "",
+        id_top1_mid: "",
+        id_top2_mid: "",
+        id_top3_mid: "",
+        id_top1_atk: "",
+        id_top2_atk: "",
+        id_top3_atk: "",
+        imagem: null
+      });
+      setIsCampModalOpen(false);
+
+    } catch (err) {
+      alert("Erro: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/");
@@ -215,6 +301,17 @@ export default function AdminRankingPage() {
         onSubmit={handleCreateTeam}
         players={players}
         saving={saving}
+      />
+
+      <NovoCampeonato
+        isOpen={isCampModalOpen}
+        onClose={() => setIsCampModalOpen(false)}
+        newCampeonato={newCamp}
+        setNewCampeonato={setNewCamp}
+        onSubmit={handleCreateCamp}
+        saving={saving}
+        teams={teams}
+        players={players}
       />
 
       <div className="border-b border-white/5 bg-[#0f111a]/50 backdrop-blur-sm sticky top-0 z-30">
@@ -359,13 +456,62 @@ export default function AdminRankingPage() {
         )}
 
         {activeTab === "campeonatos" && (
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 mt-4">
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-1">CAMPEONATOS</h2>
-              <p className="text-sm text-slate-500">Gerencie os resultados dos campeonatos.</p>
-            </div>
-           
-          </div>
+          <>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 mt-4">
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-1">CAMPEONATOS</h2>
+                <p className="text-sm text-slate-500">Gerencie os resultados dos campeonatos.</p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <DataSelect
+                  items={camps.map(c => ({ ID: c.id, Nome: c.nome }))}
+                  value={selectedCampId}
+                  onChange={setSelectedCampId}
+                  placeholder="Selecione um campeonato para editar..." />
+                <button
+                  onClick={() => setIsCampModalOpen(true)}
+                  title="Novo Campeonato"
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest p-4 rounded-xl transition-all shadow-lg cursor-pointer h-[42px]"
+                >
+                  <LayersPlus size={16} />
+                </button>
+              </div>
+            </div><CampeonatoEditor
+              campeonatoId={selectedCampId}
+              teams={teams}
+              players={players}
+              onDelete={async (id, nome, logoUrl) => {
+                if (!confirm(`Deseja deletar o campeonato ${nome}?`)) return;
+                setSaving(true);
+                try {
+                  if (logoUrl) {
+                    const urlParts = logoUrl.split('/');
+                    const fileName = urlParts[urlParts.length - 1];
+                    const filePath = `campeonatos/${fileName}`;
+                    const { error: storageError } = await supabase.storage
+                      .from('escudos')
+                      .remove([filePath]);
+                    if (storageError) console.error("Erro storage:", storageError.message);
+                  }
+                  const { error: dbError } = await supabase
+                    .from("campeonatos")
+                    .delete()
+                    .eq("id", id);
+
+                  if (dbError) throw dbError;
+
+                  setSelectedCampId(null);
+                  fetchCamps();
+                  alert("Campeonato removido com sucesso!");
+                } catch (err) {
+                  alert("Erro ao deletar: " + err.message);
+                } finally {
+                  setSaving(false);
+                }
+              }}
+              saving={saving} />
+          </>
         )}
       </div>
     </div>

@@ -1,7 +1,8 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
 import { useEffect, useState } from "react";
-import { Save, RotateCcw, AlertCircle, Trash2, Shield, Calendar, UserCheck, ImagePlus } from "lucide-react";
+import { Save, RotateCcw, AlertCircle, Trash2, Shield, Calendar, UserCheck, ImagePlus, UserPlus, UserMinus, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase.js";
 
 const CompactSelect = ({ items, value, onChange, placeholder }) => (
@@ -33,15 +34,68 @@ export default function TimeEditor({ team, players, onSaveToDb, onDelete, saving
     const [isDirty, setIsDirty] = useState(false);
     const [uploading, setUploading] = useState(false);
 
+    const [teamPlayers, setTeamPlayers] = useState([]);
+    const [loadingPlayers, setLoadingPlayers] = useState(false);
+    const [selectedPlayerToAdd, setSelectedPlayerToAdd] = useState("");
+
+    const fetchTeamPlayers = async (teamId) => {
+        setLoadingPlayers(true);
+        const { data, error } = await supabase
+            .from("time_jogadores")
+            .select(`
+                id_jogador,
+                jogador:id_jogador (id, nome, nick)
+            `)
+            .eq("id_time", teamId);
+
+        if (!error && data) {
+            setTeamPlayers(data.map(item => item.jogador));
+        }
+        setLoadingPlayers(false);
+    };
+
     useEffect(() => {
         if (team) {
             setDraft({ ...team });
             setOriginal({ ...team });
             setIsDirty(false);
+            fetchTeamPlayers(team.id);
         } else {
             setDraft(null);
+            setTeamPlayers([]);
         }
     }, [team]);
+
+    const handleAddPlayer = async () => {
+        if (!selectedPlayerToAdd || !draft) return;
+
+        const { error } = await supabase
+            .from("time_jogadores")
+            .insert([{ id_time: draft.id, id_jogador: parseInt(selectedPlayerToAdd) }]);
+
+        if (error) {
+            alert("Erro ao adicionar jogador: " + error.message);
+        } else {
+            setSelectedPlayerToAdd("");
+            fetchTeamPlayers(draft.id);
+        }
+    };
+
+    const handleRemovePlayer = async (playerId) => {
+        if (!confirm("Remover este jogador do time?")) return;
+
+        const { error } = await supabase
+            .from("time_jogadores")
+            .delete()
+            .eq("id_time", draft.id)
+            .eq("id_jogador", playerId);
+
+        if (error) {
+            alert("Erro ao remover: " + error.message);
+        } else {
+            fetchTeamPlayers(draft.id);
+        }
+    };
 
     if (!draft) {
         return (
@@ -94,27 +148,23 @@ export default function TimeEditor({ team, players, onSaveToDb, onDelete, saving
 
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                     <div className="flex items-center gap-5 w-full">
-
                         <div className="relative group">
                             <label className="cursor-pointer block">
                                 <div className="h-16 w-16 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500 shadow-inner overflow-hidden relative transition-all group-hover:border-blue-500/50">
                                     {draft.escudo_url ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
                                         <img src={draft.escudo_url} alt="Escudo" className="h-full w-full object-cover" />
                                     ) : (
                                         <Shield size={32} className={uploading ? "animate-pulse opacity-50" : ""} />
                                     )}
-
                                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                         <ImagePlus size={20} className="text-white" />
                                     </div>
                                 </div>
                                 <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={uploading} />
                             </label>
-                            {uploading && <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-500 rounded-full animate-ping" />}
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                             <div className="space-y-1">
                                 <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Nome do Time</label>
                                 <div className="relative">
@@ -123,11 +173,10 @@ export default function TimeEditor({ team, players, onSaveToDb, onDelete, saving
                                         type="text"
                                         value={draft.nome || ""}
                                         onChange={(e) => handleChange("nome", e.target.value)}
-                                        className="w-full bg-black/40 border border-white/5 rounded-xl pl-9 pr-4 py-2 text-sm font-bold text-white focus:border-blue-500/50 focus:outline-none transition-all"
+                                        className="w-full bg-black/40 border border-white/5 rounded-xl pl-9 pr-4 py-2 text-sm font-bold text-white focus:border-blue-500/50 outline-none transition-all"
                                     />
                                 </div>
                             </div>
-
                             <div className="space-y-1">
                                 <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Ano de Fundação</label>
                                 <div className="relative">
@@ -136,7 +185,7 @@ export default function TimeEditor({ team, players, onSaveToDb, onDelete, saving
                                         type="number"
                                         value={draft.ano || ""}
                                         onChange={(e) => handleChange("ano", e.target.value)}
-                                        className="w-full bg-black/40 border border-white/5 rounded-xl pl-9 pr-4 py-2 text-sm font-bold text-white focus:border-blue-500/50 focus:outline-none transition-all"
+                                        className="w-full bg-black/40 border border-white/5 rounded-xl pl-9 pr-4 py-2 text-sm font-bold text-white focus:border-blue-500/50 outline-none transition-all"
                                     />
                                 </div>
                             </div>
@@ -150,52 +199,97 @@ export default function TimeEditor({ team, players, onSaveToDb, onDelete, saving
                                     placeholder="Selecione o dono..."
                                 />
                             </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">AÇÕES</label>
+                                <button
+                                    onClick={() => onDelete(draft.id, draft.nome, draft.escudo_url)}
+                                    className="flex items-center w-full bg-black/40 gap-2 px-4 py-2.5 text-[10px] font-black text-red-500/40 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all uppercase tracking-widest whitespace-nowrap cursor-pointer"
+                                >
+                                    <Trash2 size={14} /> Deletar Time
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Ações</label>
-                        <button
-                            onClick={() => onDelete(draft.id, draft.nome, draft.escudo_url)}
-                            className="flex items-center bg-black/40 gap-2 px-4 py-2 text-[10px] font-black text-red-500/40 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all uppercase tracking-widest whitespace-nowrap cursor-pointer"
-                        >
-                            <Trash2 size={14} /> Deletar Time
-                        </button>
-                    </div>
                 </div>
             </div>
 
-            <div className="sticky bottom-4 z-20 flex items-center justify-between bg-[#0f111a]/90 backdrop-blur-md border border-white/10 p-4 rounded-xl shadow-2xl mt-8">
-                <div className="text-sm text-slate-500 pl-2">
-                    {isDirty ? (
-                        <span className="text-amber-400 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" /> Alterações pendentes
-                        </span>
-                    ) : (
-                        <span className="flex items-center gap-2 opacity-50 text-[10px] font-bold uppercase tracking-widest">
-                            <span className="w-2 h-2 rounded-full bg-green-500" /> Sincronizado
-                        </span>
-                    )}
+            <div className="bg-[#0f111a] border border-white/5 rounded-2xl p-6 shadow-xl mb-24">
+                <div className="flex items-center justify-between gap-2 mb-6 pb-3 border-b border-white/5">
+                    <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-blue-400">ELENCO ATUAL</h3>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <select
+                            value={selectedPlayerToAdd}
+                            onChange={(e) => setSelectedPlayerToAdd(e.target.value)}
+                            className="bg-black/40 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-slate-300 outline-none focus:border-blue-500/50"
+                        >
+                            <option value="" className="bg-[#0f111a]">Selecionar jogador...</option>
+                            {players
+                                .filter(p => !teamPlayers.some(tp => tp?.ID === p.ID))
+                                .map(p => <option className="bg-[#0f111a]" key={p.ID} value={p.ID}>{p.Nome}</option>)
+                            }
+                        </select>
+                        <button
+                            onClick={handleAddPlayer}
+                            disabled={!selectedPlayerToAdd}
+                            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-30 p-1.5 rounded-lg text-white transition-all cursor-pointer"
+                        >
+                            <UserPlus size={16} />
+                        </button>
+                    </div>
                 </div>
-                <div className="flex gap-4">
-                    <button
-                        onClick={() => { setDraft(original); setIsDirty(false); }}
-                        disabled={!isDirty || saving || uploading}
-                        className="flex items-center gap-2 px-5 py-2.5 text-[10px] font-black rounded-xl text-slate-500 hover:text-white transition-all uppercase disabled:opacity-20"
-                    >
-                        <RotateCcw size={14} /> Descartar
-                    </button>
-                    <button
-                        onClick={() => onSaveToDb(draft)}
-                        disabled={!isDirty || saving || uploading}
-                        className={`flex items-center gap-2 px-8 py-2.5 text-[10px] font-black rounded-xl transition-all uppercase shadow-xl ${isDirty ? 'bg-blue-600 text-white shadow-blue-900/40 hover:bg-blue-500 cursor-pointer' : 'bg-white/5 text-slate-700 cursor-not-allowed'}`}
-                    >
-                        {saving ? "Salvando..." : (
-                            <>
-                                <Save size={18} /> Atualizar Time
-                            </>
+
+                {loadingPlayers ? (
+                    <div className="flex justify-center py-8"><Loader2 className="animate-spin text-blue-500" /></div>
+                ) : teamPlayers.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {teamPlayers.map((p) => (
+                            <div key={p?.id} className="flex items-center justify-between bg-black/20 border border-white/[0.03] p-3 rounded-xl group hover:border-white/10 transition-all">
+                                <div className="flex items-center justify-between gap-3">
+                                    <img src={`https://hubbe.biz/avatar/${p.nick}?img_format=png&headonly=2`} className="relative w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-800 object-cover" alt="" />
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-black text-white">{p?.nome}</span>
+                                        <span className="text-[9px] text-slate-500 tracking-tighter">@{p?.nick}</span>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => handleRemovePlayer(p?.id)}
+                                    className="opacity-0 group-hover:opacity-100 p-2 text-slate-600 hover:text-red-500 transition-all cursor-pointer"
+                                >
+                                    <UserMinus size={14} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-center py-8 text-slate-600 text-[10px] uppercase font-bold tracking-widest">Nenhum jogador no elenco</p>
+                )}
+            </div>
+
+            <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-xl px-4 z-40">
+                <div className={`bg-[#0f111a]/95 backdrop-blur-md border border-white/10 p-3 rounded-2xl shadow-2xl flex items-center justify-between transition-all duration-300 ${isDirty ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'}`}>
+                    <div className="text-sm text-slate-500 pl-4">
+                        {isDirty ? (
+                            <span className="text-amber-400 flex items-center gap-2 text-[9px] font-black uppercase tracking-widest">
+                                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" /> Alterações pendentes
+                            </span>
+                        ) : (
+                            <span className="flex items-center gap-2 opacity-50 text-[9px] font-black uppercase tracking-widest">
+                                <span className="w-2 h-2 rounded-full bg-green-500" /> Sincronizado
+                            </span>
                         )}
-                    </button>
+                    </div>
+                    <div className="flex gap-2">
+                        <button onClick={() => { setDraft(original); setIsDirty(false); }} className="flex items-center gap-2 px-4 py-2 text-[10px] font-black rounded-xl text-slate-500 hover:text-white transition-all uppercase"><RotateCcw size={14} /> Descartar</button>
+                        <button onClick={() => onSaveToDb(draft)} disabled={saving || !isDirty} className={`flex items-center gap-2 px-6 py-2.5 text-[10px] font-black rounded-xl transition-all uppercase shadow-xl ${isDirty ? 'bg-blue-600 text-white shadow-blue-900/40 hover:bg-blue-500' : 'bg-white/5 text-slate-700'}`}>
+                            {saving ? <Loader2 size={14} className="animate-spin" /> : <><Save size={14} /> Atualizar Time</>}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

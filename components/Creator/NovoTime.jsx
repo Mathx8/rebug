@@ -19,8 +19,8 @@ export default function NovoTime({
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            setNewTeam({ ...newTeam, imagem: file }); // Guardamos o arquivo bruto para o upload
-            setPreview(URL.createObjectURL(file)); // Criamos uma prévia visual
+            setNewTeam({ ...newTeam, imagem: file });
+            setPreview(URL.createObjectURL(file));
         }
     };
 
@@ -39,7 +39,6 @@ export default function NovoTime({
 
                 <form onSubmit={onSubmit} className="space-y-5">
 
-                    {/* SELETOR DE IMAGEM / ESCUDO */}
                     <div className="flex flex-col items-center justify-center mb-6">
                         <label className="group relative cursor-pointer">
                             <div className="h-24 w-24 rounded-3xl bg-black/40 border-2 border-dashed border-white/10 flex items-center justify-center overflow-hidden transition-all group-hover:border-blue-500/50">
