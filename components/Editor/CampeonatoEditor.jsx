@@ -29,6 +29,10 @@ export default function CampeonatoEditor({ campeonatoId, teams, players, onDelet
     const [selectedTeams, setSelectedTeams] = useState([]);
     const [uploading, setUploading] = useState(false);
 
+    const [searchTerm, setSearchTerm] = useState("");
+    const [filterOwner, setFilterOwner] = useState("");
+    const [filterYear, setFilterYear] = useState("");
+
     useEffect(() => {
         if (campeonatoId) {
             fetchCampeonato();
@@ -114,6 +118,15 @@ export default function CampeonatoEditor({ campeonatoId, teams, players, onDelet
         setSaving(false);
     };
 
+    const filteredTeams = teams.filter(team => {
+        const matchesSearch = team.nome.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesOwner = filterOwner === "" || team.dono === parseInt(filterOwner);
+        const matchesYear = filterYear === "" || team.ano === parseInt(filterYear);
+        return matchesSearch && matchesOwner && matchesYear;
+    });
+
+    const uniqueYears = [...new Set(teams.map(t => t.ano))].sort((a, b) => b - a);
+
     if (!campeonatoId) return (
         <div className="mt-8 flex flex-col items-center justify-center p-12 border-2 border-dashed border-white/5 rounded-3xl bg-white/[0.02]">
             <Trophy size={40} className="text-slate-800 mb-4" />
@@ -188,26 +201,79 @@ export default function CampeonatoEditor({ campeonatoId, teams, players, onDelet
             </div>
 
             <div className="bg-[#0f111a] border border-white/5 rounded-3xl p-6 mb-6">
-                <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-widest border-b border-white/5 pb-3 mb-4 flex items-center gap-2">
-                    <Trophy size={14} /> Times Participantes
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                    {teams.map(team => {
-                        const isSelected = selectedTeams.includes(team.id);
-                        return (
+                <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-white/5 pb-3 mb-4 gap-4">
+                    <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-widest flex items-center gap-2">
+                        <Trophy size={14} /> Times Participantes ({selectedTeams.length})
+                    </h4>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        <input
+                            type="text"
+                            placeholder="Pesquisar time..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] text-white outline-none focus:border-blue-500/50 w-full md:w-40"
+                        />
+                        <select
+                            value={filterOwner}
+                            onChange={(e) => setFilterOwner(e.target.value)}
+                            className="bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] text-slate-400 outline-none focus:border-blue-500/50"
+                        >
+                            <option value="">Todos os Donos</option>
+                            {players.map(p => <option key={p.ID} value={p.ID}>{p.Nome}</option>)}
+                        </select>
+                        <select
+                            value={filterYear}
+                            onChange={(e) => setFilterYear(e.target.value)}
+                            className="bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] text-slate-400 outline-none focus:border-blue-500/50"
+                        >
+                            <option value="">Todos os Anos</option>
+                            {uniqueYears.map(year => <option key={year} value={year}>{year}</option>)}
+                        </select>
+                        {(searchTerm || filterOwner || filterYear) && (
                             <button
-                                key={team.id}
-                                onClick={() => toggleTeam(team.id)}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-bold transition-all cursor-pointer ${isSelected
-                                    ? "bg-blue-600 border-blue-500 text-white hover:text-slate-400"
-                                    : "bg-black/40 border-white/5 text-slate-500 hover:border-white/20 hover:text-white"
-                                    }`}
+                                onClick={() => { setSearchTerm(""); setFilterOwner(""); setFilterYear(""); }}
+                                className="text-slate-500 hover:text-white transition-colors"
+                                title="Limpar Filtros"
                             >
-                                {isSelected ? <X size={12} /> : <Plus size={12} />}
-                                {team.nome}
+                                <X size={14} />
                             </button>
-                        );
-                    })}
+                        )}
+                    </div>
+                </div>
+
+                <div className="max-height-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="flex flex-wrap gap-2">
+                        {filteredTeams.length > 0 ? (
+                            filteredTeams.map(team => {
+                                const isSelected = selectedTeams.includes(team.id);
+                                return (
+                                    <button
+                                        key={team.id}
+                                        onClick={() => toggleTeam(team.id)}
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-bold transition-all cursor-pointer group ${isSelected
+                                            ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20"
+                                            : "bg-black/40 border-white/5 text-slate-500 hover:border-blue-500/30 hover:text-white"
+                                            }`}
+                                    >
+                                        {isSelected ? (
+                                            <X size={12} className="text-blue-200" />
+                                        ) : (
+                                            <Plus size={12} className="text-slate-600 group-hover:text-blue-400" />
+                                        )}
+                                        {team.nome}
+                                        <span className="opacity-50 font-normal text-[8px] ml-1">
+                                            {team.ano}
+                                        </span>
+                                    </button>
+                                );
+                            })
+                        ) : (
+                            <div className="w-full py-8 text-center border border-dashed border-white/5 rounded-2xl">
+                                <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Nenhum time encontrado com os filtros</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 

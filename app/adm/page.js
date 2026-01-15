@@ -50,8 +50,12 @@ export default function AdminRankingPage() {
   const [selectedCampId, setSelectedCampId] = useState(null);
 
   const fetchPlayers = async () => {
-    const { data } = await supabase.from("dados").select("ID, Nome, Nick").order('Nome', { ascending: true });
-    setPlayers(data || []);
+    const { data } = await supabase
+      .from("jogadores")
+      .select("id, nome, nick")
+      .order('nome', { ascending: true });
+
+    setPlayers(data?.map(p => ({ ...p, ID: p.id, Nome: p.nome, Nick: p.nick })) || []);
   };
 
   const fetchTeams = async () => {
@@ -104,7 +108,31 @@ export default function AdminRankingPage() {
 
   useEffect(() => {
     if (!selectedId) { setPlayer(null); return; }
-    supabase.from("dados").select("*").eq("ID", selectedId).single().then(({ data }) => setPlayer(data));
+
+    supabase
+      .from("jogadores")
+      .select(`
+      *,
+      ranking (*)
+    `)
+      .eq("id", selectedId)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          const rankingData = Array.isArray(data.ranking)
+            ? (data.ranking[0] || {})
+            : (data.ranking || {});
+
+          const flattenedPlayer = {
+            ...data,
+            ...rankingData,
+            Nome: data.nome,
+            Nick: data.nick,
+            id: data.id
+          };
+          setPlayer(flattenedPlayer);
+        }
+      });
   }, [selectedId]);
 
   useEffect(() => {
@@ -117,25 +145,51 @@ export default function AdminRankingPage() {
     if (!newPlayer.nome || !newPlayer.nick) return;
 
     setSaving(true);
-    const { error } = await supabase
-      .from("dados")
-      .insert([{ Nome: newPlayer.nome, Nick: newPlayer.nick }]);
 
-    if (error) {
-      alert("Erro ao adicionar: " + error.message);
-    } else {
-      await fetchPlayers();
-      setNewPlayer({ nome: "", nick: "" });
-      setIsModalOpen(false);
+    const { data: insertedPlayer, error: pError } = await supabase
+      .from("jogadores")
+      .insert([{ nome: newPlayer.nome, nick: newPlayer.nick }])
+      .select()
+      .single();
+
+    if (pError) {
+      alert("Erro ao criar jogador: " + pError.message);
+      setSaving(false);
+      return;
     }
+
+    await fetchPlayers();
+    setNewPlayer({ nome: "", nick: "" });
+    setIsModalOpen(false);
     setSaving(false);
   };
 
-  const handleSaveToDb = async (updatedPlayerData) => {
+  const handleSaveToDb = async (updatedData) => {
     setSaving(true);
-    const { error } = await supabase.from("dados").update(updatedPlayerData).eq("ID", updatedPlayerData.ID);
-    if (error) alert("Erro: " + error.message);
-    else { setPlayer(updatedPlayerData); await fetchPlayers(); }
+
+    const { id, Nome, Nick, ranking, ...allStats } = updatedData;
+
+    const { nome, nick, ...stats } = allStats;
+
+    const { error: error1 } = await supabase
+      .from("jogadores")
+      .update({ nome: Nome, nick: Nick })
+      .eq("id", id);
+
+    const { error: error2 } = await supabase
+      .from("ranking")
+      .upsert({
+        id_jogador: id,
+        ...stats
+      }, { onConflict: 'id_jogador' });
+
+    if (!error1 && !error2) {
+      alert("Salvo com sucesso!");
+      fetchPlayers();
+      setPlayer(updatedData);
+    } else {
+      alert("Erro ao salvar: " + (error1?.message || error2?.message));
+    }
     setSaving(false);
   };
 
@@ -379,9 +433,26 @@ export default function AdminRankingPage() {
               onSaveToDb={handleSaveToDb}
               onDelete={async (id) => {
                 if (!confirm(`Tem certeza que deseja deletar ${player.Nome}?`)) return;
-                await supabase.from("dados").delete().eq("ID", id);
-                setSelectedId(null);
-                fetchPlayers();
+
+                setSaving(true);
+                try {
+                  const { error } = await supabase
+                    .from("jogadores")
+                    .delete()
+                    .eq("id", id);
+
+                  if (error) throw error;
+
+                  setSelectedId(null);
+                  setPlayer(null);
+                  await fetchPlayers();
+
+                  alert("Jogador removido com sucesso!");
+                } catch (err) {
+                  alert("Erro ao deletar: " + err.message);
+                } finally {
+                  setSaving(false);
+                }
               }}
               saving={saving}
             />

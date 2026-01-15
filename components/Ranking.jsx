@@ -24,7 +24,10 @@ export default function Ranking() {
     useEffect(() => {
         async function fetchRanking() {
             setLoading(true);
-            const { data, error } = await supabase.from("public_ranking").select("*");
+            const { data, error } = await supabase
+                .from("public_ranking")
+                .select("*")
+                .gt("pontos", 0);
 
             if (error) {
                 console.error(error);

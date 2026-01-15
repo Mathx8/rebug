@@ -60,8 +60,9 @@ export default function RankingEditor({ player, onSaveToDb, onDelete, saving }) 
   }
 
   const handleChange = (key, value) => {
-    setDraft(prev => ({ ...prev, [key]: value }));
-    setIsDirty(true);
+    const newDraft = { ...draft, [key]: value };
+    setDraft(newDraft);
+    setIsDirty(JSON.stringify(newDraft) !== JSON.stringify(original));
   };
 
   return (
@@ -112,7 +113,7 @@ export default function RankingEditor({ player, onSaveToDb, onDelete, saving }) 
           <div className="space-y-1">
             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Ações</label>
             <button
-              onClick={() => onDelete(draft.ID, draft.Nome)}
+              onClick={() => onDelete(draft.id, draft.Nome)}
               className="flex items-center bg-black/40 gap-2 px-4 py-2 text-[10px] font-black text-red-500/40 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all uppercase tracking-widest whitespace-nowrap cursor-pointer"
             >
               <Trash2 size={14} /> Deletar Jogador
