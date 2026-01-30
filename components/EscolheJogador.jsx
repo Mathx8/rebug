@@ -7,6 +7,7 @@ export default function DataSelect({
     onChange,
     placeholder = "Selecione uma opção...",
     labelKey = "Nome",
+    labelKey2 = null,
     valueKey = "ID" 
 }) {
     return (
@@ -35,7 +36,7 @@ export default function DataSelect({
                         value={item[valueKey]}
                         className="bg-[#0f111a]"
                     >
-                        {item[labelKey]}
+                        {item[labelKey]} {labelKey2 ? `- ${item[labelKey2]}` : ""}
                     </option>
                 ))}
             </select>

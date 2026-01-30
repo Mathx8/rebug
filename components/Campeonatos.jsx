@@ -27,12 +27,14 @@ export default function CampeonatosPage() {
             .from("campeonatos")
             .select(`
                 *,
-                campeonato_times(id_time(escudo_url)),
+                campeonato_times(id_time(nome, escudo_url)),
                 campeao:id_campeao(nome, escudo_url),
                 vice:id_vice(nome, escudo_url),
                 mvp:id_mvp(nick),
-                artilheiro:id_artilheiro(nick),
-                garcom:id_assistencia(nick),
+                premiacoes(
+                    tipo,
+                    jogador:id_jogador(nick)
+                ),
                 luva:id_top1_gk(id, nick, time_jogadores(id_time(id, nome, escudo_url))),
                 top2_gk:id_top2_gk(id, nick, time_jogadores(id_time(id, nome, escudo_url))),
                 top3_gk:id_top3_gk(id, nick, time_jogadores(id_time(id, nome, escudo_url))),
@@ -48,10 +50,29 @@ export default function CampeonatosPage() {
             `)
             .order('data', { ascending: false });
 
-        setCampeonatos(data || []);
+        if (data) {
+            const formattedData = data.map(camp => {
+                const artilheiros = camp.premiacoes
+                    ?.filter(p => p.tipo === 'artilheiro')
+                    .map(p => p.jogador?.nick)
+                    .filter(Boolean) || [];
+
+                const garcons = camp.premiacoes
+                    ?.filter(p => p.tipo === 'assistencia')
+                    .map(p => p.jogador?.nick)
+                    .filter(Boolean) || [];
+
+                return {
+                    ...camp,
+                    artilheiros,
+                    assistencias: garcons,
+                };
+            });
+
+            setCampeonatos(formattedData);
+        }
         setLoading(false);
     }
-
 
     async function fetchDetails(camp) {
         setSelectedCamp(camp);
@@ -82,11 +103,11 @@ export default function CampeonatosPage() {
     const getRandomShields = (campTimesLink, count = 3) => {
         if (!campTimesLink || campTimesLink.length === 0) return [];
 
-        const shields = campTimesLink
-            .map(item => item.id_time?.escudo_url)
-            .filter(url => url);
+        const validTeams = campTimesLink
+            .filter(item => item.id_time?.escudo_url)
+            .map(item => item.id_time);
 
-        return [...shields].sort(() => 0.5 - Math.random()).slice(0, count);
+        return [...validTeams].sort(() => 0.5 - Math.random()).slice(0, count);
     };
 
     if (loading) return (
@@ -109,7 +130,7 @@ export default function CampeonatosPage() {
                                     <p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Elenco da Temporada</p>
                                 </div>
                             </div>
-                            <button onClick={() => setSelectedTeam(null)} className="p-2 hover:bg-white/5 rounded-full transition-colors text-slate-400">
+                            <button onClick={() => setSelectedTeam(null)} className="p-2 hover:bg-white/5 rounded-full transition-colors text-slate-400 cursor-pointer">
                                 <X size={24} />
                             </button>
                         </div>
@@ -183,7 +204,7 @@ export default function CampeonatosPage() {
                                 onClick={() => fetchDetails(camp)}
                                 className="group relative bg-[#0f111a] border border-white/5 rounded-[32px] overflow-hidden cursor-pointer hover:border-blue-500/40 transition-all hover:translate-y-[-4px]"
                             >
-                                <div className="p-8 relative z-10">
+                                <div className="p-8 relative z-10 flex flex-col h-full gap-2">
                                     <div className="flex justify-between items-start mb-10">
                                         <div className="p-4 bg-white/[0.03] rounded-3xl border border-white/5 shadow-2xl group-hover:border-blue-500/20 transition-colors">
                                             <img src={camp.logo_url} alt="" className="w-16 h-16 object-contain group-hover:scale-110 transition-transform duration-500" />
@@ -196,25 +217,36 @@ export default function CampeonatosPage() {
                                     <h3 className="text-3xl font-black mb-1 uppercase italic leading-none group-hover:text-blue-500 transition-colors">{camp.nome}</h3>
                                     <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em]">Temporada Oficial</p>
 
-                                    <div className="flex items-center gap-4 mt-8 pt-6 border-t border-white/5">
+                                    <div className="flex items-center gap-4 mt-auto pt-6 border-t border-white/5 w-full">
                                         <div className="flex -space-x-3">
-                                            {getRandomShields(camp.campeonato_times).length > 0 ? (
-                                                getRandomShields(camp.campeonato_times).map((url, i) => (
-                                                    <div key={i} className="w-8 h-8 rounded-full bg-white/[0.03] border-2 border-[#0f111a] flex items-center justify-center overflow-hidden shadow-lg">
-                                                        <img src={url} className="w-5 h-5 object-contain" alt="" />
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                [1, 2, 3].map(i => (
+                                            {(() => {
+                                                const drawnTeams = getRandomShields(camp.campeonato_times);
+
+                                                if (drawnTeams.length > 0) {
+                                                    return drawnTeams.map((time, i) => (
+                                                        <div key={i} className="w-8 h-8 rounded-full bg-white/[0.03] border-2 border-[#0f111a] flex items-center justify-center overflow-hidden shadow-lg">
+                                                            <img
+                                                                src={time.escudo_url}
+                                                                className="w-5 h-5 object-contain"
+                                                                alt="Escudo"
+                                                                title={time.nome || 'Time Participante'}
+                                                            />
+                                                        </div>
+                                                    ));
+                                                }
+
+                                                return [1, 2, 3].map(i => (
                                                     <div key={i} className="w-8 h-8 rounded-full bg-slate-800 border-2 border-[#0f111a] flex items-center justify-center">
                                                         <Users size={12} className="text-slate-600" />
                                                     </div>
-                                                ))
-                                            )}
+                                                ));
+                                            })()}
                                         </div>
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                                            Ver Competição
-                                        </span>
+                                        <div className="flex items-center content-end gap-2">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                                                Ver Competição
+                                            </span>
+                                        </div>
                                         <ChevronRight size={16} className="text-blue-500 ml-auto group-hover:translate-x-1 transition-transform" />
                                     </div>
                                 </div>
@@ -236,8 +268,8 @@ export default function CampeonatosPage() {
                                             <img src={selectedCamp.logo_url} className="w-40 h-40 md:w-56 md:h-56 object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative z-10" alt="" />
                                         </div>
 
-                                        <div className="flex-1 text-center md:text-left cursor-default">
-                                            <h2 className="text-5xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85] mb-8 select-none">
+                                        <div className="flex-1 w-full min-w-0 text-center md:text-left cursor-default">
+                                            <h2 className="text-5xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85] mb-8 select-none break-words  md:max-w-none">
                                                 {selectedCamp.nome}
                                             </h2>
 
@@ -321,15 +353,14 @@ export default function CampeonatosPage() {
                                     <h4 className="text-xs font-black uppercase tracking-[0.4em] text-blue-500 mb-10 flex items-center gap-3">
                                         <Medal size={18} /> Resumo da Glória
                                     </h4>
-                                    <div className="space-y-8">
-                                        <div className="space-y-4">
-                                            <PodiumItem team={selectedCamp.campeao} label="Campeão" color="text-amber-500" bg="bg-amber-500/10" border="border-amber-500/20" />
-                                            <PodiumItem team={selectedCamp.vice} label="Vice-Campeão" color="text-slate-400" bg="bg-white/5" border="border-white/10" />
-                                        </div>
-                                        <AwardItem icon={Star} label="Melhor Jogador (MVP)" name={selectedCamp.mvp?.nick} color="text-purple-400" bg="bg-purple-400/10" />
-                                        <AwardItem icon={Target} label="Artilheiro" name={selectedCamp.artilheiro?.nick} color="text-red-400" bg="bg-red-400/10" />
-                                        <AwardItem icon={Handshake} label="Rei das Assistências" name={selectedCamp.garcom?.nick} color="text-green-400" bg="bg-green-400/10" />
-                                        <AwardItem icon={Hand} label="Luva de Ouro" name={selectedCamp.luva?.nick} color="text-amber-400" bg="bg-amber-400/10" />
+                                    <div className="space-y-6">
+                                        <PodiumItem team={selectedCamp.campeao} label="Campeão" color="text-amber-500" bg="bg-amber-500/10" border="border-amber-500/20" />
+                                        <PodiumItem team={selectedCamp.vice} label="Vice-Campeão" color="text-slate-400" bg="bg-white/5" border="border-white/10" />
+
+                                        <AwardItem icon={Star} label="Melhor Jogador (MVP)" names={selectedCamp.mvp?.nick ? [selectedCamp.mvp.nick] : []} color="text-purple-400" bg="bg-purple-400/10" />
+                                        <AwardItem icon={Target} label="Artilheiro" names={selectedCamp.artilheiros} color="text-red-400" bg="bg-red-400/10" />
+                                        <AwardItem icon={Handshake} label="Rei das Assistências" names={selectedCamp.assistencias} color="text-green-400" bg="bg-green-400/10" />
+                                        <AwardItem icon={Hand} label="Luva de Ouro" names={selectedCamp.luva?.nick ? [selectedCamp.luva.nick] : []} color="text-amber-400" bg="bg-amber-400/10" />
                                     </div>
                                 </div>
 
@@ -452,25 +483,63 @@ function PositionGroup({ title, icon: Icon, color, top1, top2, top3, participant
     );
 }
 
-function AwardItem({ icon: Icon, label, name, color, bg }) {
+function AwardItem({ icon: Icon, label, names = [], color, bg }) {
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const hasPlayers = names && names.length > 0;
+
+    useEffect(() => {
+        if (names.length > 1) {
+            const timer = setInterval(() => {
+                setCurrentIndex((prev) => (prev + 1) % names.length);
+            }, 3000);
+            return () => clearInterval(timer);
+        }
+    }, [names]);
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setCurrentIndex(0);
+    }, [names]);
+
+    const currentNick = names[currentIndex] || '---';
+
     return (
-        <div className="flex items-center gap-5 group cursor-default">
-            <div className="relative">
-                <div className={`w-16 h-16 rounded-[20px] rounded-tr-[0px] ${bg} flex items-center justify-center ${color} border border-white/5 group-hover:scale-105 transition-transform duration-500 overflow-hidden shadow-xl`}>
-                    {name ? (
-                        <img src={`https://hubbe.biz/avatar/${name}?img_format=png&headonly=2`} className="w-full h-full object-cover scale-110 mt-2" alt="" />
+        <div className="flex items-center gap-5 group cursor-default h-[64px]">
+            <div className="relative flex-shrink-0">
+                <div
+                    key={currentNick}
+                    className={`w-16 h-16 rounded-[20px] rounded-tr-[0px] ${bg} flex items-center justify-center ${color} border border-white/5 overflow-hidden shadow-xl bg-[#0f111a] animate-in fade-in zoom-in duration-500`}
+                >
+                    {hasPlayers ? (
+                        <img
+                            src={`https://hubbe.biz/avatar/${currentNick}?img_format=png&headonly=2`}
+                            className="w-full h-full object-cover scale-110 mt-2"
+                            alt={currentNick}
+                        />
                     ) : (
                         <Icon size={24} className="opacity-20" />
                     )}
                 </div>
-                <div className={`absolute -right-0 -top-0 w-6 h-6 rounded-lg rounded-tr-[0px] ${bg} border border-white/10 flex items-center justify-center ${color} shadow-lg`}>
+
+                <div className={`absolute -right-0 -top-0 w-6 h-6 rounded-lg rounded-tr-[0px] ${bg} border border-white/10 flex items-center justify-center ${color} shadow-lg z-20`}>
                     <Icon size={12} />
                 </div>
             </div>
+
             <div className="min-w-0">
-                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1.5">{label}</p>
-                <p className="text-xl font-black uppercase italic leading-none group-hover:text-white transition-colors truncate">
-                    {name || '---'}
+                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1.5 flex items-center gap-2">
+                    {label}
+                    {names.length > 1 && (
+                        <span className="text-[8px] bg-white/5 px-1 rounded text-blue-400">
+                            {currentIndex + 1}/{names.length}
+                        </span>
+                    )}
+                </p>
+                <p
+                    key={currentNick + "-text"}
+                    className="text-xl font-black uppercase italic leading-none group-hover:text-white transition-colors truncate animate-in slide-in-from-left-2 duration-500"
+                >
+                    {hasPlayers ? currentNick : '---'}
                 </p>
             </div>
         </div>

@@ -469,7 +469,8 @@ export default function AdminRankingPage() {
 
               <div className="flex items-center gap-3">
                 <DataSelect
-                  items={teams.map(t => ({ ID: t.id, Nome: t.nome }))}
+                  items={teams.map(t => ({ ID: t.id, Nome: t.nome, Ano: t.ano }))}
+                  labelKey2={teams.length > 0 ? "Ano" : null}
                   value={selectedTeamId}
                   onChange={setSelectedTeamId}
                   placeholder="Selecione um time para editar..."
