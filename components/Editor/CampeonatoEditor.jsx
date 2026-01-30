@@ -21,6 +21,47 @@ const PlayerSelect = ({ label, value, onChange, icon: Icon, color, players }) =>
     </div>
 );
 
+const MultiPlayerSelect = ({ label, selectedIds, players, onAdd, onRemove, icon: Icon, color }) => (
+    <div className="space-y-2">
+        <label className={`text-[9px] font-black uppercase tracking-widest ${color || 'text-slate-500'} flex items-center gap-1`}>
+            {Icon && <Icon size={10} />} {label}
+        </label>
+
+        <div className="flex flex-wrap gap-2 mb-2">
+            {selectedIds.map(id => {
+                const p = players.find(player => String(player.ID || player.id) === String(id));
+
+                return (
+                    <div key={id} className="flex items-center gap-2 bg-white/5 border border-white/10 px-2 py-1 rounded-lg text-[10px] text-white">
+                        {p ? p.Nome || p.nome : `ID: ${id}`}
+                        <button
+                            onClick={() => onRemove(id)}
+                            className="text-red-400 hover:text-red-300 ml-1"
+                            type="button"
+                        >
+                            <X size={12} />
+                        </button>
+                    </div>
+                );
+            })}
+        </div>
+
+        <select
+            value=""
+            onChange={(e) => {
+                if (e.target.value) onAdd(e.target.value);
+            }}
+            className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-white text-[11px] outline-none"
+        >
+            <option value="">Adicionar {label}...</option>
+            {players
+                .filter(p => !selectedIds.includes(p.ID))
+                .map(p => <option key={p.ID} value={p.ID}>{p.Nome}</option>)
+            }
+        </select>
+    </div>
+);
+
 export default function CampeonatoEditor({ campeonatoId, teams, players, onDelete }) {
     const [draft, setDraft] = useState(null);
     const [original, setOriginal] = useState(null);
@@ -45,10 +86,21 @@ export default function CampeonatoEditor({ campeonatoId, teams, players, onDelet
 
     async function fetchCampeonato() {
         setLoading(true);
-        const { data } = await supabase.from("campeonatos").select("*").eq("id", campeonatoId).single();
-        if (data) {
-            setDraft(data);
-            setOriginal(data);
+        const { data: campData } = await supabase.from("campeonatos").select("*").eq("id", campeonatoId).single();
+        const { data: premData } = await supabase.from("premiacoes").select("*").eq("id_campeonato", campeonatoId);
+
+        if (campData) {
+            const artilheiros = premData?.filter(p => p.tipo === 'artilheiro').map(p => p.id_jogador) || [];
+            const assistencias = premData?.filter(p => p.tipo === 'assistencia').map(p => p.id_jogador) || [];
+
+            const fullData = {
+                ...campData,
+                artilheiros,
+                assistencias
+            };
+
+            setDraft(fullData);
+            setOriginal(fullData);
         }
         setLoading(false);
     }
@@ -106,16 +158,35 @@ export default function CampeonatoEditor({ campeonatoId, teams, players, onDelet
 
     const handleSave = async () => {
         setSaving(true);
-        const { id, ...updateData } = draft;
-        const { error } = await supabase.from("campeonatos").update(updateData).eq("id", id);
+        const { id, artilheiros, assistencias, ...updateData } = draft;
 
-        if (!error) {
+        try {
+            await supabase.from("campeonatos").update(updateData).eq("id", id);
+
+            await supabase.from("premiacoes").delete().eq("id_campeonato", id);
+
+            const recordsToInsert = [];
+
+            artilheiros.forEach(playerId => {
+                recordsToInsert.push({ id_campeonato: id, tipo: 'artilheiro', id_jogador: playerId });
+            });
+
+            assistencias.forEach(playerId => {
+                recordsToInsert.push({ id_campeonato: id, tipo: 'assistencia', id_jogador: playerId });
+            });
+
+            if (recordsToInsert.length > 0) {
+                const { error: insertError } = await supabase.from("premiacoes").insert(recordsToInsert);
+                if (insertError) throw insertError;
+            }
+
             setOriginal(draft);
-            alert("Dados atualizados com sucesso!");
-        } else {
-            alert("Erro ao salvar: " + error.message);
+            alert("Campeonato e premiações múltiplas salvos!");
+        } catch (error) {
+            alert("Erro: " + error.message);
+        } finally {
+            setSaving(false);
         }
-        setSaving(false);
     };
 
     const filteredTeams = teams.filter(team => {
@@ -300,10 +371,29 @@ export default function CampeonatoEditor({ campeonatoId, teams, players, onDelet
 
                 <div className="bg-[#0f111a] border border-white/5 rounded-3xl p-6">
                     <h4 className="text-[10px] font-black text-purple-500 uppercase tracking-widest border-b border-white/5 pb-3 mb-4">Estatísticas</h4>
-                    <div className="grid grid-cols-1 gap-3">
+                    <div className="grid grid-cols-1 gap-6">
                         <PlayerSelect players={players} label="MVP" icon={Star} color="text-purple-400" value={draft.id_mvp} onChange={(val) => setDraft({ ...draft, id_mvp: val })} />
-                        <PlayerSelect players={players} label="Artilheiro" icon={Target} color="text-red-400" value={draft.id_artilheiro} onChange={(val) => setDraft({ ...draft, id_artilheiro: val })} />
-                        <PlayerSelect players={players} label="Assistência" icon={Zap} color="text-green-400" value={draft.id_assistencia} onChange={(val) => setDraft({ ...draft, id_assistencia: val })} />
+
+                        <hr className="border-white/5" />
+
+                        <MultiPlayerSelect
+                            label="Artilheiros"
+                            icon={Target}
+                            color="text-red-400"
+                            players={players}
+                            selectedIds={draft.artilheiros || []}
+                            onAdd={(id) => setDraft({ ...draft, artilheiros: [...(draft.artilheiros || []), id] })}
+                            onRemove={(id) => setDraft({ ...draft, artilheiros: draft.artilheiros.filter(x => x !== id) })}
+                        />
+                        <MultiPlayerSelect
+                            label="Assistências"
+                            icon={Zap}
+                            color="text-green-400"
+                            players={players}
+                            selectedIds={draft.assistencias || []}
+                            onAdd={(id) => setDraft({ ...draft, assistencias: [...(draft.assistencias || []), id] })}
+                            onRemove={(id) => setDraft({ ...draft, assistencias: draft.assistencias.filter(x => x !== id) })}
+                        />
                     </div>
                 </div>
             </div>
